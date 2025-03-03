@@ -44,24 +44,316 @@ $_ENV['V2RayJson_Config'] = [
 ];
 
 $_ENV['SingBox_Config'] = [
+    'log' => [
+        'disabled' => false,
+        'level' => 'error',
+        'timestamp' => true,
+    ],
+    'dns' => [
+        'servers' => [
+            [
+                'tag' => 'local',
+                'type' => 'local',
+                'detour' => 'direct',
+            ],
+            [
+                'tag' => 'alidns',
+                'type' => 'quic',
+                'server' => '223.6.6.6',
+                'server_port' => 853,
+                'detour' => 'direct',
+            ],
+            [
+                'tag' => 'cloudflare',
+                'type' => 'tls',
+                'server' => '1.1.1.1',
+                'server_port' => 853,
+                'detour' => 'select',
+            ],
+            [
+                'tag' => 'google',
+                'type' => 'tls',
+                'server' => '8.8.4.4',
+                'server_port' => 853,
+                'detour' => 'direct',
+            ],
+            [
+                'tag' => 'fakeip',
+                'type' => 'fakeip',
+                'inet4_range' => '198.18.0.0/15',
+                'inet6_range' => 'fc00::/18',
+            ],
+            [
+                'tag' => 'block',
+                'type' => 'predefined',
+                'responses' => [
+                    [
+                        'rcode' => 'REFUSED',
+                    ],
+                ],
+            ],
+        ],
+        'rules' => [
+            [
+                'query_type' => [
+                    'SVCB',
+                    'HTTPS',
+                ],
+                'server' => 'block',
+            ],
+            [
+                'clash_mode' => 'Global',
+                'server' => 'fakeip',
+            ],
+            [
+                'rule_set' => [
+                    'china-site',
+                    'geosite-geolocation-cn',
+                    'geosite-cn',
+                    'geosite-netease',
+                    'geosite-bilibili',
+                ],
+                'server' => 'fakeip',
+            ],
+            [
+                'type' => 'logical',
+                'mode' => 'and',
+                'rules' => [
+                    [
+                        'rule_set' => [
+                            'geosite-geolocation-!cn',
+                        ],
+                        'invert' => true,
+                    ],
+                    [
+                        'rule_set' => [
+                            'geoip-cn',
+                        ],
+                    ],
+                ],
+                'action' => 'route',
+                'server' => 'google',
+                'client_subnet' => '111.222.0.0',
+            ],
+            [
+                'rule_set' => [
+                    'china-site-add',
+                ],
+                'server' => 'fakeip',
+            ],
+            [
+                'clash_mode' => 'Rule',
+                'server' => 'fakeip',
+            ],
+            [
+                'clash_mode' => 'Direct',
+                'server' => 'local',
+            ],
+        ],
+        'final' => 'block',
+        'disable_cache' => true,
+        'independent_cache' => true,
+    ],
+    'inbounds' => [
+        [
+            'type' => 'tun',
+            'tag' => 'in',
+            'address' => [
+                '172.18.0.1/30',
+                'fdfe:dcba:9876::1/126',
+            ],
+            'auto_route' => true,
+            'strict_route' => true,
+            'udp_timeout' => 60,
+            'stack' => 'mixed',
+        ],
+    ],
     'outbounds' => [
         [
             'tag' => 'select',
             'type' => 'selector',
-            'default' => 'auto',
             'outbounds' => [
                 'auto',
             ],
+            'default' => 'auto',
+            'interrupt_exist_connections' => true,
         ],
         [
-            'tag' => 'auto',
             'type' => 'urltest',
+            'tag' => 'auto',
             'outbounds' => [],
-            'url' => 'http://www.gstatic.com/generate_204',
+            'url' => 'https://cp.cloudflare.com/generate_204',
             'interval' => '3m',
             'tolerance' => 50,
             'idle_timeout' => '30m',
-            'interrupt_exist_connections' => false,
+            'interrupt_exist_connections' => true,
+        ],
+        [
+            'tag' => 'rules_download',
+            'type' => 'selector',
+            'outbounds' => [
+                'select',
+                'auto',
+                'direct',
+            ],
+            'default' => 'auto',
+            'interrupt_exist_connections' => true,
+        ],
+        [
+            'type' => 'direct',
+            'tag' => 'direct',
+        ],
+    ],
+    'route' => [
+        'rules' => [
+            [
+                'inbound' => 'in',
+                'action' => 'sniff',
+                'timeout' => '1s',
+            ],
+            [
+                'protocol' => 'dns',
+                'action' => 'hijack-dns',
+            ],
+            [
+                'clash_mode' => 'Direct',
+                'outbound' => 'direct',
+            ],
+            [
+                'clash_mode' => 'Global',
+                'outbound' => 'select',
+            ],
+            [
+                'rule_set' => [
+                    'geosite-geolocation-!cn',
+                ],
+                'outbound' => 'select',
+            ],
+            [
+                'rule_set' => [
+                    'geoip-cn',
+                ],
+                'outbound' => 'direct',
+            ],
+            [
+                'rule_set' => [
+                    'china-site',
+                    'geosite-geolocation-cn',
+                    'geosite-cn',
+                    'geosite-netease',
+                    'geosite-bilibili',
+                ],
+                'outbound' => 'direct',
+            ],
+            [
+                'type' => 'logical',
+                'mode' => 'and',
+                'rules' => [
+                    [
+                        'rule_set' => [
+                            'geosite-geolocation-!cn',
+                        ],
+                        'invert' => true,
+                    ],
+                    [
+                        'rule_set' => [
+                            'geoip-cn',
+                        ],
+                    ],
+                ],
+                'action' => 'route',
+                'outbound' => 'direct',
+            ],
+            [
+                'protocol' => 'stun',
+                'action' => 'reject',
+                'method' => 'default',
+            ],
+            [
+                'ip_is_private' => true,
+                'outbound' => 'direct',
+            ],
+        ],
+        'rule_set' => [
+            [
+                'tag' => 'geoip-cn',
+                'type' => 'remote',
+                'format' => 'binary',
+                'url' => 'https://' . $_ENV['jsdelivr_url'] . '/gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs',
+                'download_detour' => 'rules_download',
+                'update_interval' => '1d',
+            ],
+            [
+                'tag' => 'geosite-cn',
+                'type' => 'remote',
+                'format' => 'binary',
+                'url' => 'https://' . $_ENV['jsdelivr_url'] . '/gh/SagerNet/sing-geosite@rule-set/geosite-cn.srs',
+                'download_detour' => 'rules_download',
+                'update_interval' => '1d',
+            ],
+            [
+                'tag' => 'china-site',
+                'type' => 'remote',
+                'format' => 'binary',
+                'url' => 'https://github.com/77-QiQi/sing-box-rule-set/releases/download/china-rule-set/china_site.srs',
+                'download_detour' => 'rules_download',
+                'update_interval' => '1d',
+            ],
+            [
+                'tag' => 'china-site-add',
+                'type' => 'remote',
+                'format' => 'binary',
+                'url' => 'https://github.com/77-QiQi/sing-box-rule-set/releases/download/china-rule-set/china_site_add.srs',
+                'download_detour' => 'rules_download',
+                'update_interval' => '1d',
+            ],
+            [
+                'tag' => 'geosite-geolocation-cn',
+                'type' => 'remote',
+                'format' => 'binary',
+                'url' => 'https://' . $_ENV['jsdelivr_url'] . '/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs',
+                'download_detour' => 'rules_download',
+                'update_interval' => '1d',
+            ],
+            [
+                'tag' => 'geosite-geolocation-!cn',
+                'type' => 'remote',
+                'format' => 'binary',
+                'url' => 'https://' . $_ENV['jsdelivr_url'] . '/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs',
+                'download_detour' => 'rules_download',
+                'update_interval' => '1d',
+            ],
+            [
+                'tag' => 'geosite-netease',
+                'type' => 'remote',
+                'format' => 'binary',
+                'url' => 'https://' . $_ENV['jsdelivr_url'] . '/gh/SagerNet/sing-geosite@rule-set/geosite-netease.srs',
+                'download_detour' => 'rules_download',
+                'update_interval' => '1d',
+            ],
+            [
+                'tag' => 'geosite-bilibili',
+                'type' => 'remote',
+                'format' => 'binary',
+                'url' => 'https://' . $_ENV['jsdelivr_url'] . '/gh/SagerNet/sing-geosite@rule-set/geosite-bilibili.srs',
+                'download_detour' => 'rules_download',
+                'update_interval' => '1d',
+            ],
+        ],
+        'final' => 'select',
+        'auto_detect_interface' => true,
+        'override_android_vpn' => true,
+        'default_domain_resolver' => [
+            'server' => 'local',
+            'rewrite_tll' => 60,
+            'client_subnet' => '111.222.0.0',
+        ],
+    ],
+    'experimental' => [
+        'cache_file' => [
+            'enabled' => true,
+            'cache_id' => '',
+            'path' => 'cache.db',
         ],
     ],
 ];
