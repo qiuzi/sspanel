@@ -208,7 +208,7 @@ $_ENV['Clash_Group_Config'] = [
         'DOMAIN-SUFFIX,clipdrop.co,🔰 节点选择',
         'DOMAIN-SUFFIX,jasper.ai,🔰 节点选择',
         'DOMAIN-SUFFIX,meta.ai,🔰 节点选择',
-        'DOMAIN-SUFFIX,openart.ai,🔰 节点选择'
+        'DOMAIN-SUFFIX,openart.ai,🔰 节点选择',
         'DOMAIN-SUFFIX,openrouter.ai,🔰 节点选择',
         'DOMAIN-SUFFIX,perplexity.ai,🔰 节点选择',
         'DOMAIN-SUFFIX,poe.com,🔰 节点选择',
